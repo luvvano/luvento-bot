@@ -6,6 +6,7 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - WEBHOOK_API_KEY=${WEBHOOK_API_KEY}
+      - OWNER_ID=${OWNER_ID}
       - DATABASE_PATH=/data/bot.db
       - PORT=8080
     volumes:

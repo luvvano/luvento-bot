@@ -12,22 +12,29 @@ import (
 type Bot struct {
 	api     *tgbotapi.BotAPI
 	storage *storage.Storage
+	ownerID int64
 	stop    chan struct{}
 }
 
-func New(token string, store *storage.Storage) (*Bot, error) {
+func New(token string, store *storage.Storage, ownerID int64) (*Bot, error) {
 	api, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, fmt.Errorf("create bot api: %w", err)
 	}
 
-	slog.Info("authorized on telegram", "username", api.Self.UserName)
+	slog.Info("authorized on telegram", "username", api.Self.UserName, "owner_id", ownerID)
 
 	return &Bot{
 		api:     api,
 		storage: store,
+		ownerID: ownerID,
 		stop:    make(chan struct{}),
 	}, nil
+}
+
+// isOwner checks if the user is the bot owner
+func (b *Bot) isOwner(userID int64) bool {
+	return b.ownerID > 0 && userID == b.ownerID
 }
 
 func (b *Bot) Start() {
@@ -103,23 +110,16 @@ func (b *Bot) cmdAddGroup(msg *tgbotapi.Message) {
 		return
 	}
 
-	// Check if user is admin
-	isAdmin, err := b.isUserAdmin(msg.Chat.ID, msg.From.ID)
-	if err != nil {
-		slog.Error("failed to check admin status", "error", err)
-		reply := tgbotapi.NewMessage(msg.Chat.ID, "❌ Ошибка проверки прав")
-		b.api.Send(reply)
-		return
-	}
-
-	if !isAdmin {
-		reply := tgbotapi.NewMessage(msg.Chat.ID, "⚠️ Только администраторы могут добавлять группу")
+	// Check if user is the bot owner
+	if !b.isOwner(msg.From.ID) {
+		slog.Warn("unauthorized addgroup attempt", "user_id", msg.From.ID, "chat_id", msg.Chat.ID)
+		reply := tgbotapi.NewMessage(msg.Chat.ID, "⚠️ Только владелец бота может добавлять группы")
 		b.api.Send(reply)
 		return
 	}
 
 	// Add group
-	err = b.storage.AddGroup(msg.Chat.ID, msg.Chat.Title, msg.From.ID)
+	err := b.storage.AddGroup(msg.Chat.ID, msg.Chat.Title, msg.From.ID)
 	if err != nil {
 		slog.Error("failed to add group", "error", err)
 		reply := tgbotapi.NewMessage(msg.Chat.ID, "❌ Ошибка добавления группы")
@@ -139,21 +139,15 @@ func (b *Bot) cmdRemoveGroup(msg *tgbotapi.Message) {
 		return
 	}
 
-	isAdmin, err := b.isUserAdmin(msg.Chat.ID, msg.From.ID)
-	if err != nil {
-		slog.Error("failed to check admin status", "error", err)
-		reply := tgbotapi.NewMessage(msg.Chat.ID, "❌ Ошибка проверки прав")
+	// Check if user is the bot owner
+	if !b.isOwner(msg.From.ID) {
+		slog.Warn("unauthorized removegroup attempt", "user_id", msg.From.ID, "chat_id", msg.Chat.ID)
+		reply := tgbotapi.NewMessage(msg.Chat.ID, "⚠️ Только владелец бота может удалять группы")
 		b.api.Send(reply)
 		return
 	}
 
-	if !isAdmin {
-		reply := tgbotapi.NewMessage(msg.Chat.ID, "⚠️ Только администраторы могут удалять группу")
-		b.api.Send(reply)
-		return
-	}
-
-	err = b.storage.RemoveGroup(msg.Chat.ID)
+	err := b.storage.RemoveGroup(msg.Chat.ID)
 	if err != nil {
 		slog.Error("failed to remove group", "error", err)
 		reply := tgbotapi.NewMessage(msg.Chat.ID, "❌ Ошибка удаления группы")

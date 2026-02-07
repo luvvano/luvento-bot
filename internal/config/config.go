@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type Config struct {
@@ -10,6 +11,7 @@ type Config struct {
 	WebhookAPIKey string
 	DatabasePath  string
 	Port          string
+	OwnerID       int64 // Telegram user ID of the bot owner
 }
 
 func Load() (*Config, error) {
@@ -33,10 +35,20 @@ func Load() (*Config, error) {
 		port = "8080"
 	}
 
+	var ownerID int64
+	if ownerIDStr := os.Getenv("OWNER_ID"); ownerIDStr != "" {
+		var err error
+		ownerID, err = strconv.ParseInt(ownerIDStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid OWNER_ID: %w", err)
+		}
+	}
+
 	return &Config{
 		TelegramToken: token,
 		WebhookAPIKey: apiKey,
 		DatabasePath:  dbPath,
 		Port:          port,
+		OwnerID:       ownerID,
 	}, nil
 }

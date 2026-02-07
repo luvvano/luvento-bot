@@ -40,7 +40,7 @@ func main() {
 	defer store.Close()
 
 	// Initialize Telegram bot
-	tgBot, err := bot.New(cfg.TelegramToken, store)
+	tgBot, err := bot.New(cfg.TelegramToken, store, cfg.OwnerID)
 	if err != nil {
 		slog.Error("failed to initialize telegram bot", "error", err)
 		os.Exit(1)

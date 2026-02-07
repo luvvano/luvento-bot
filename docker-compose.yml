@@ -1,0 +1,38 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - WEBHOOK_API_KEY=${WEBHOOK_API_KEY}
+      - DATABASE_PATH=/data/bot.db
+      - PORT=8080
+    volumes:
+      - bot-data:/data
+    networks:
+      - coolify
+      - luvvano
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.luvento-bot.rule=Host(`cal.luvano.pro`) && PathPrefix(`/bot-webhook`)"
+      - "traefik.http.routers.luvento-bot.entrypoints=https"
+      - "traefik.http.routers.luvento-bot.tls=true"
+      - "traefik.http.routers.luvento-bot.middlewares=luvento-bot-strip"
+      - "traefik.http.middlewares.luvento-bot-strip.stripprefix.prefixes=/bot-webhook"
+      - "traefik.http.services.luvento-bot.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  bot-data:
+
+networks:
+  coolify:
+    external: true
+  luvvano:
+    external: true

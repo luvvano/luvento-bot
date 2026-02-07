@@ -15,9 +15,12 @@ services:
       - luvvano
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.luvento-bot.rule=Host(`cal.luvano.pro`) && PathPrefix(`/bot-webhook`)"
       - "traefik.http.routers.luvento-bot.entrypoints=https"
       - "traefik.http.routers.luvento-bot.tls=true"
+      - "traefik.http.routers.luvento-bot.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.luvento-bot.priority=100"
       - "traefik.http.routers.luvento-bot.middlewares=luvento-bot-strip"
       - "traefik.http.middlewares.luvento-bot-strip.stripprefix.prefixes=/bot-webhook"
       - "traefik.http.services.luvento-bot.loadbalancer.server.port=8080"
